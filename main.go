@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -14,7 +15,7 @@ import (
 	"github.com/PuerkitoBio/goquery"
 )
 
-type status struct {
+type parcel struct {
 	Status   string
 	Time     int64
 	Location string
@@ -75,7 +76,7 @@ func main() {
 	log.Fatal(http.ListenAndServe(":"+PORT, nil))
 }
 
-func getStatuses(courrier, trackingNumber string) (statuses []*status, err error) {
+func getStatuses(courrier, trackingNumber string) (statuses []*parcel, err error) {
 	switch courrier {
 	case "phlpost":
 		statuses, err = phlPost(trackingNumber)
@@ -84,7 +85,7 @@ func getStatuses(courrier, trackingNumber string) (statuses []*status, err error
 	return
 }
 
-func phlPost(tn string) (statuses []*status, err error) {
+func phlPost(tn string) (parcels []*parcel, err error) {
 	const endpoint = "https://tnt.phlpost.gov.ph/"
 
 	// Params
@@ -102,7 +103,7 @@ func phlPost(tn string) (statuses []*status, err error) {
 	}
 
 	// Loop through each row
-	statuses = []*status{}
+	parcels = []*parcel{}
 	doc.Find("table tbody tr").Each(func(i int, row *goquery.Selection) {
 		// Exclude header
 		if i == 0 {
@@ -119,12 +120,17 @@ func phlPost(tn string) (statuses []*status, err error) {
 		t, _ := time.Parse("Jan 02 2006 3:04PM", columns[1])
 		t = t.Add(-8 * time.Hour)
 
-		statuses = append(statuses, &status{
+		parcels = append(parcels, &parcel{
 			columns[0],
 			t.UTC().Unix(),
 			columns[2],
 		})
 	})
+
+	// Empty
+	if len(parcels) == 0 {
+		err = errors.New("Package does not exist")
+	}
 
 	return
 }
