@@ -1,9 +1,14 @@
 package parcel
 
+// Constants
+const (
+	PHLPOST = "phlpost"
+)
+
 // Status ...
 type Status struct {
-	Status   string `json:"location"`
 	Time     int64  `json:"time"`
+	Status   string `json:"status"`
 	Location string `json:"location"`
 }
 

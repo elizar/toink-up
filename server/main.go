@@ -9,14 +9,9 @@ import (
 	"os"
 	"regexp"
 	"strings"
-)
 
-type parcel struct {
-	Status    string
-	Time      int64
-	Location  string
-	Delivered bool
-}
+	"github.com/elizar/toink-up/parcel"
+)
 
 func main() {
 	// Init server
@@ -44,13 +39,19 @@ func main() {
 
 			// courier => segments[1]
 			// tracking_number => segments[2]
-			statuses, err := getStatuses(segments[1], segments[2])
+			p := parcel.NewParcel(segments[1], segments[2])
+			total, err := p.Fetch()
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
 			}
 
-			sb, _ := json.MarshalIndent(statuses, "", " ")
+			if total == 0 {
+				http.Error(w, "Package not found", http.StatusNotFound)
+				return
+			}
+
+			sb, _ := json.MarshalIndent(p, "", "  ")
 			w.Header().Set("Content-Type", "application/json")
 			w.Write(sb)
 
@@ -74,13 +75,4 @@ func main() {
 	// Listen and server mo'fucker!
 	log.Println("[ Server ] - up and running on port " + PORT)
 	log.Fatal(http.ListenAndServe(":"+PORT, nil))
-}
-
-func getStatuses(courrier, trackingNumber string) (statuses []*parcel, err error) {
-	switch courrier {
-	case "phlpost":
-		statuses, err = phlPost(trackingNumber)
-	}
-
-	return
 }

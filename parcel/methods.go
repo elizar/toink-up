@@ -1,7 +1,6 @@
 package parcel
 
 import (
-	"errors"
 	"net/http"
 	"net/url"
 	"strings"
@@ -11,18 +10,36 @@ import (
 )
 
 // NewTracker ...
-func NewParcel(courier, tn string) *Tracker {
+func NewParcel(courier, tn string) *Parcel {
 	return &Parcel{
 		Courier:        courier,
 		TrackingNumber: tn,
 	}
 }
 
+// Fetch retrives the tracking history of a given parcel
 func (p *Parcel) Fetch() (total int, err error) {
+	switch p.Courier {
+	case PHLPOST:
+		var statuses []*Status
 
+		statuses, err = phlPost(p.TrackingNumber)
+		total = len(statuses)
+
+		p.History = statuses
+	}
+
+	return
 }
 
-func phlPost(tn string) (parcels []*parcel, err error) {
+//////////////////////////////////////////////////////////
+//
+//
+//                       Local methods
+//
+//
+/////////////////////////////////////////////////////////
+func phlPost(tn string) (statuses []*Status, err error) {
 	const endpoint = "https://tnt.phlpost.gov.ph/"
 
 	// Params
@@ -40,7 +57,7 @@ func phlPost(tn string) (parcels []*parcel, err error) {
 	}
 
 	// Loop through each row
-	parcels = []*parcel{}
+	statuses = []*Status{}
 	doc.Find("table tbody tr").Each(func(i int, row *goquery.Selection) {
 		// Exclude header
 		if i == 0 {
@@ -49,7 +66,7 @@ func phlPost(tn string) (parcels []*parcel, err error) {
 
 		columns := []string{}
 		row.Children().Each(func(i int, col *goquery.Selection) {
-			columns = append(columns, strings.Trim(col.Text(), "  "))
+			columns = append(columns, strings.Trim(col.Text(), " "))
 		})
 
 		// Parse time and subtract offset UTC+8 since PHLPOST
@@ -57,18 +74,8 @@ func phlPost(tn string) (parcels []*parcel, err error) {
 		t, _ := time.Parse("Jan 02 2006 3:04PM", columns[1])
 		t = t.Add(-8 * time.Hour)
 
-		parcels = append(parcels, &parcel{
-			columns[0],
-			t.UTC().Unix(),
-			columns[2],
-			false,
-		})
+		statuses = append(statuses, &Status{t.UTC().Unix(), columns[0], columns[2]})
 	})
-
-	// Empty
-	if len(parcels) == 0 {
-		err = errors.New("Package does not exist")
-	}
 
 	return
 }
