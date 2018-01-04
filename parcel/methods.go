@@ -3,6 +3,7 @@ package parcel
 import (
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 	"time"
 
@@ -24,9 +25,11 @@ func (p *Parcel) Fetch() (total int, err error) {
 		var statuses []*Status
 
 		statuses, err = phlPost(p.TrackingNumber)
-		total = len(statuses)
 
 		p.History = statuses
+		p.Delivered = regexp.MustCompile(`(?i)item delivered`).MatchString(p.History[0].Status)
+		// set total items
+		total = len(statuses)
 	}
 
 	return
@@ -39,6 +42,7 @@ func (p *Parcel) Fetch() (total int, err error) {
 //
 //
 /////////////////////////////////////////////////////////
+
 func phlPost(tn string) (statuses []*Status, err error) {
 	const endpoint = "https://tnt.phlpost.gov.ph/"
 
@@ -56,8 +60,9 @@ func phlPost(tn string) (statuses []*Status, err error) {
 		return
 	}
 
-	// Loop through each row
 	statuses = []*Status{}
+
+	// Loop through each row
 	doc.Find("table tbody tr").Each(func(i int, row *goquery.Selection) {
 		// Exclude header
 		if i == 0 {
