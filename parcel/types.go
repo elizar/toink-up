@@ -14,8 +14,8 @@ type Status struct {
 
 // Tracker ...
 type Parcel struct {
-	Courier        string    `json:"courier"`
-	TrackingNumber string    `json:"trackingNumber"`
-	Delivered      bool      `json:"delivered"`
-	History        []*Status `json:"history"`
+	Delivered       bool      `json:"delivered"`
+	Courier         string    `json:"courier"`
+	TrackingNumber  string    `json:"trackingNumber"`
+	TrackingHistory []*Status `json:"trackingHistory"`
 }

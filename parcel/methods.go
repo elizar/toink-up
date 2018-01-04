@@ -1,6 +1,7 @@
 package parcel
 
 import (
+	"errors"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -20,17 +21,22 @@ func NewParcel(courier, tn string) *Parcel {
 
 // Fetch retrives the tracking history of a given parcel
 func (p *Parcel) Fetch() (total int, err error) {
+	var statuses []*Status
+
 	switch p.Courier {
 	case PHLPOST:
-		var statuses []*Status
-
 		statuses, err = phlPost(p.TrackingNumber)
-
-		p.History = statuses
-		p.Delivered = regexp.MustCompile(`(?i)item delivered`).MatchString(p.History[0].Status)
-		// set total items
-		total = len(statuses)
 	}
+
+	total = len(statuses)
+
+	if total == 0 {
+		err = errors.New("package not found")
+		return
+	}
+
+	p.TrackingHistory = statuses
+	p.Delivered = regexp.MustCompile(`(?i)item delivered`).MatchString(p.TrackingHistory[0].Status)
 
 	return
 }

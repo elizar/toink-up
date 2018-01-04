@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -30,30 +31,48 @@ func main() {
 
 		// Tracking and shit
 		if regexp.MustCompile("^\\/parcels").MatchString(r.URL.Path) && r.Method == http.MethodPost {
-			segments := strings.Split(r.URL.Path, "/")[1:] // Ignore the first item which is an empty string
+			var err error
+			var p interface{}
+
+			code := http.StatusOK
+
+			defer func() {
+				// IF has error :D
+				if err != nil {
+					p = struct {
+						Code  int
+						Error string
+					}{code, err.Error()}
+				}
+
+				sb, _ := json.MarshalIndent(p, "", "  ")
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(code)
+				w.Write(sb)
+			}()
+
+			// Excude the first item since it's empty
+			segments := strings.Split(r.URL.Path, "/")[1:]
 
 			if len(segments) != 3 {
-				http.Error(w, "Bad Request", http.StatusBadRequest)
+				err = errors.New("Invalid request")
+				code = http.StatusBadRequest
 				return
 			}
 
-			// courier => segments[1]
-			// tracking_number => segments[2]
-			p := parcel.NewParcel(segments[1], segments[2])
-			total, err := p.Fetch()
+			// courier          -> segments[1]
+			// tracking_number  -> segments[2]
+			p = parcel.NewParcel(segments[1], segments[2])
+
+			// Cast and fetch
+			_, err = p.(*parcel.Parcel).Fetch()
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
+				code = http.StatusBadRequest
+				// not found
+				if regexp.MustCompile(`(?i)not found`).MatchString(err.Error()) {
+					code = http.StatusNotFound
+				}
 			}
-
-			if total == 0 {
-				http.Error(w, "Package not found", http.StatusNotFound)
-				return
-			}
-
-			sb, _ := json.MarshalIndent(p, "", "  ")
-			w.Header().Set("Content-Type", "application/json")
-			w.Write(sb)
 
 			return
 		}
