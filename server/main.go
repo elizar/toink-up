@@ -92,7 +92,7 @@ func main() {
 		PORT = "8080"
 	}
 
-	// Listen and server mo'fucker!
+	// Listen and serve mo'fucker!
 	log.Println("[ Server ] - up and running on port " + PORT)
 	log.Fatal(http.ListenAndServe(":"+PORT, nil))
 }
