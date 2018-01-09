@@ -24,8 +24,14 @@ func (p *Parcel) Fetch() (total int, err error) {
 	var statuses []*Status
 
 	switch p.Courier {
+
 	case PHLPOST:
 		statuses, err = phlPost(p.TrackingNumber)
+
+	default:
+		err = errors.New("Courier does not exists")
+		return
+
 	}
 
 	total = len(statuses)
@@ -36,7 +42,8 @@ func (p *Parcel) Fetch() (total int, err error) {
 	}
 
 	p.TrackingHistory = statuses
-	p.Delivered = regexp.MustCompile(`(?i)item delivered`).MatchString(p.TrackingHistory[0].Status)
+	rx := regexp.MustCompile(`(?i)item delivered`)
+	p.Delivered = rx.MatchString(p.TrackingHistory[0].Status)
 
 	return
 }
@@ -85,7 +92,7 @@ func phlPost(tn string) (statuses []*Status, err error) {
 		t, _ := time.Parse("Jan 02 2006 3:04PM", columns[1])
 		t = t.Add(-8 * time.Hour)
 
-		statuses = append(statuses, &Status{t.UTC().Unix(), columns[0], columns[2]})
+		statuses = append(statuses, &Status{t.Unix(), columns[0], columns[2]})
 	})
 
 	return

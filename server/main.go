@@ -30,14 +30,14 @@ func main() {
 		}
 
 		// Tracking and shit
-		if regexp.MustCompile("^\\/parcels").MatchString(r.URL.Path) && r.Method == http.MethodPost {
+		if regexp.MustCompile("^\\/parcels").MatchString(r.URL.Path) {
 			var err error
 			var p interface{}
 
 			code := http.StatusOK
 
 			defer func() {
-				// IF has error :D
+				// If has error :D
 				if err != nil {
 					p = struct {
 						Code  int
@@ -60,8 +60,8 @@ func main() {
 				return
 			}
 
-			// courier          -> segments[1]
-			// tracking_number  -> segments[2]
+			// courier        -> segments[1]
+			// trackingNumber -> segments[2]
 			p = parcel.NewParcel(segments[1], segments[2])
 
 			// Cast and fetch
@@ -69,7 +69,8 @@ func main() {
 			if err != nil {
 				code = http.StatusBadRequest
 				// not found
-				if regexp.MustCompile(`(?i)not found`).MatchString(err.Error()) {
+				rx := regexp.MustCompile(`(?i)not found`)
+				if rx.MatchString(err.Error()) {
 					code = http.StatusNotFound
 				}
 			}
