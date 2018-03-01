@@ -24,14 +24,13 @@ func (p *Parcel) Fetch() (total int, err error) {
 	var statuses []*Status
 
 	switch p.Courier {
-
 	case PHLPOST:
 		statuses, err = phlPost(p.TrackingNumber)
-
+	case LBC:
+		statuses, err = lbc(p.TrackingNumber)
 	default:
 		err = errors.New("Courier does not exists")
 		return
-
 	}
 
 	total = len(statuses)
@@ -93,6 +92,39 @@ func phlPost(tn string) (statuses []*Status, err error) {
 		t = t.Add(-8 * time.Hour)
 
 		statuses = append(statuses, &Status{t.Unix(), columns[0], columns[2]})
+	})
+
+	return
+}
+
+func lbc(tn string) (statuses []*Status, err error) {
+	const endpoint = "http://www.lbcexpress.com/track/?"
+
+	// Params
+	p := make(url.Values)
+	p.Add("tracking_no", tn) // "1122039085"
+
+	resp, err := http.PostForm(endpoint, p)
+	if err != nil {
+		return
+	}
+
+	doc, err := goquery.NewDocumentFromResponse(resp)
+	if err != nil {
+		return
+	}
+
+	statuses = []*Status{}
+
+	doc.Find("table tbody tr").Each(func(i int, row *goquery.Selection) {
+		columns := []string{}
+		row.Children().Each(func(i int, col *goquery.Selection) {
+			columns = append(columns, strings.Trim(col.Text(), " "))
+		})
+
+		t, _ := time.Parse("January 2, 2006", columns[0])
+
+		statuses = append(statuses, &Status{t.Unix(), columns[1], columns[2]})
 	})
 
 	return

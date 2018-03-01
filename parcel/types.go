@@ -3,6 +3,7 @@ package parcel
 // Constants
 const (
 	PHLPOST = "phlpost"
+	LBC     = "lbc"
 )
 
 // Status ...
